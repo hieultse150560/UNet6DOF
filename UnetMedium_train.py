@@ -165,6 +165,7 @@ if __name__ == '__main__':
     torch.manual_seed(0)
     model = UNet6DOF_medium() # model
     softmax = SpatialSoftmax3D(20, 20, 18, 21) # trả về heatmap và ước tính keypoint từ heatmap predicted
+    # input_var can be on any device, including CPU
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
