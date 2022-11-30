@@ -246,31 +246,20 @@ if __name__ == '__main__':
 
             if i_batch % 500 ==0 and i_batch!=0: # Cứ 50 batch lại evaluate 1 lần
 
-                print("[%d/%d] LR: %.6f, Loss: %.6f, Heatmap_loss: %.6f, Keypoint_loss: %.6f, "
-                      "k_max_gt: %.6f, k_max_pred: %.6f, k_min_gt: %.6f, k_min_pred: %.6f, "
-                      "h_max_gt: %.6f, h_max_pred: %.6f, h_min_gt: %.6f, h_min_pred: %.6f" % (
-                    i_batch, len(train_dataloader), get_lr(optimizer), loss.item(), loss_heatmap, loss_keypoint,
-                    np.amax(keypoint.cpu().data.numpy()), np.amax(keypoint_out.cpu().data.numpy()),
-                    np.amin(keypoint.cpu().data.numpy()), np.amin(keypoint_out.cpu().data.numpy()),
-                    np.amax(heatmap.cpu().data.numpy()), np.amax(heatmap_out.cpu().data.numpy()),
-                    np.amin(heatmap.cpu().data.numpy()), np.amin(heatmap_out.cpu().data.numpy())))
+#                 print("[%d/%d] LR: %.6f, Loss: %.6f, Heatmap_loss: %.6f, Keypoint_loss: %.6f, "
+#                       "k_max_gt: %.6f, k_max_pred: %.6f, k_min_gt: %.6f, k_min_pred: %.6f, "
+#                       "h_max_gt: %.6f, h_max_pred: %.6f, h_min_gt: %.6f, h_min_pred: %.6f" % (
+#                     i_batch, len(train_dataloader), get_lr(optimizer), loss.item(), loss_heatmap, loss_keypoint,
+#                     np.amax(keypoint.cpu().data.numpy()), np.amax(keypoint_out.cpu().data.numpy()),
+#                     np.amin(keypoint.cpu().data.numpy()), np.amin(keypoint_out.cpu().data.numpy()),
+#                     np.amax(heatmap.cpu().data.numpy()), np.amax(heatmap_out.cpu().data.numpy()),
+#                     np.amin(heatmap.cpu().data.numpy()), np.amin(heatmap_out.cpu().data.numpy())))
 
 
-                if args.linkLoss:
-                    print ("loss_heatmap:", loss_heatmap.cpu().data.numpy(),
-                           "loss_link:", loss_link.cpu().data.numpy(),
-                           "loss_keypoint:", loss_keypoint.cpu().data.numpy())
-
-
-                torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss,},
-                 args.exp_dir + 'ckpts/' + args.exp + '_' + str(args.lr)
-                 + '_' + str(args.window) + '_' + 'cp'+ str(epoch) + '.path.tar')
-                print("Saving to ", args.exp_dir + 'ckpts/' + args.exp + '_' + str(args.lr)
-                 + '_' + str(args.window) + '_' + 'cp'+ str(epoch) + '.path.tar')
+#                 if args.linkLoss:
+#                     print ("loss_heatmap:", loss_heatmap.cpu().data.numpy(),
+#                            "loss_link:", loss_link.cpu().data.numpy(),
+#                            "loss_keypoint:", loss_keypoint.cpu().data.numpy())
 
                 print("Now running on val set")
                 model.train(False)
@@ -320,11 +309,18 @@ if __name__ == '__main__':
 
 
                 scheduler.step(np.mean(val_loss))
-
-
+        
             avg_train_loss = np.mean(train_loss)
             avg_val_loss = np.mean(val_loss)
-            
+            torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': avg_val_loss,},
+             args.exp_dir + 'ckpts/' + args.exp + '_' + str(args.lr)
+             + '_' + str(args.window) + '_' + 'cp'+ str(epoch) + '.path.tar')
+            print("Saving to ", args.exp_dir + 'ckpts/' + args.exp + '_' + str(args.lr)
+             + '_' + str(args.window) + '_' + 'cp'+ str(epoch) + '.path.tar')
             if avg_val_loss < best_val_loss:
                 print ("new_best_keypoint_l2:", avg_val_loss)
                 best_val_loss = avg_val_loss
@@ -333,7 +329,7 @@ if __name__ == '__main__':
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': loss,},
+                    'loss': best_val_loss,},
                    args.exp_dir + 'ckpts/' + args.exp + '_' + str(args.lr)
                     + '_' + str(args.window) + '_best' + '.path.tar')
                 print("Saving to ", args.exp_dir + 'ckpts/' + args.exp + '_' + str(args.lr)
@@ -388,8 +384,8 @@ if __name__ == '__main__':
         loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000 # Loss heatmap
         heatmap_out = heatmap_transform
 
-        if i_batch % 100 == 0 and i_batch != 0:
-            print (i_batch, loss_heatmap)
+        if i_batch % 1000 == 0 and i_batch != 0:
+            print (i_batch, " Batch, Loss: ", loss_heatmap)
             # loss = loss_heatmap
             # print (loss)
 
