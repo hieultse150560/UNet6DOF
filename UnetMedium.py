@@ -1,9 +1,12 @@
- # TRAINING
+# TRAINING
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
+from timm.models.vision_transformer import _cfg
+from functools import partial
+from PVT import PyramidVisionTransformer
 
 def softmax(data):
     for i in range(data.shape[0]):
@@ -97,49 +100,28 @@ class UNet6DOF_medium(nn.Module):
   def forward(self, input):
     out, features = self.pvtMedium.forward_features(input)
     out = out.reshape(20, 6, 6, 512)
-    print(out.shape)
     out = out.transpose(1, 3).transpose(2, 3)
-    print(out.shape)
     out = out.reshape(out.shape[0], out.shape[1], out.shape[2], out.shape[3], 1)
-    print(out.shape)
     out = out.repeat(1,1,1,1, self.x)
-    print(out.shape)
     out = self.convTrans_00(out)
-    print(out.shape)
-
-    print()
-    print(features[2].shape)
+    
     fea1 = features[2].reshape(20, 12, 12, 256).transpose(1, 3).transpose(2, 3)
     fea1 = fea1.reshape(fea1.shape[0], fea1.shape[1], fea1.shape[2], fea1.shape[3], 1).repeat(1,1,1,1,self.k)
-    print(fea1.shape)
     out = torch.cat((out, fea1), axis=-1)
-    print(out.shape)
     out = self.convTrans_01(out)
-    print(out.shape)
 
-    print()
-    print(features[1].shape)
     fea2 = features[1].reshape(-1, 24, 24, 128).transpose(1, 3).transpose(2, 3)
     fea2 = fea2.reshape(fea2.shape[0], fea2.shape[1], fea2.shape[2], fea2.shape[3], 1).repeat(1,1,1,1,self.m)
-    print(fea2.shape)
     out = torch.cat((out, fea2), axis=-1)
-    print(out.shape)
     out = self.convTrans_02(out)
-    print(out.shape)
 
-    print()
-    print(features[0].shape)
     fea3 = features[0].reshape(-1, 48, 48, 64).transpose(1, 3).transpose(2, 3)
     fea3 = fea3.reshape(fea3.shape[0], fea3.shape[1], fea3.shape[2], fea3.shape[3], 1).repeat(1,1,1,1,self.n)
-    print(fea3.shape)
     out = torch.cat((out, fea3), axis=-1)
-    print(out.shape)
 
     print()
     out = self.conv_00(out)
-    print(out.shape)
     out = self.conv_01(out)
-    print(out.shape)
 
     return out
 
