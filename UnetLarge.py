@@ -1,12 +1,9 @@
-# TRAINING
+ # TRAINING
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
-from timm.models.vision_transformer import _cfg
-from functools import partial
-from PVT import PyramidVisionTransformer
 
 def softmax(data):
     for i in range(data.shape[0]):
@@ -55,24 +52,24 @@ class SpatialSoftmax3D(torch.nn.Module):
         feature_keypoints = expected_xyz.reshape(-1, self.channel, 3)
         return feature_keypoints, heatmap
 
-def pvt_medium6DOF(pretrained=False, **kwargs):
+def pvt_large6DOF(pretrained=False, **kwargs):
     model = PyramidVisionTransformer(
         img_size = 96,
         patch_size=2, in_chans = 20, embed_dims=[64, 128, 256, 512], num_heads=[1, 2, 4, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 18, 3], sr_ratios=[8, 4, 2, 1],
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
         **kwargs)
     model.default_cfg = _cfg()
 
     return model
 
-class UNet6DOF_medium(nn.Module):
+class UNet6DOF_large(nn.Module):
   def __init__(self):
     self.x = 2
     self.k = 4
     self.m = 4
     self.n = 4
     super().__init__()
-    self.pvtMedium = pvt_medium6DOF()
+    self.pvtMedium = pvt_large6DOF()
     self.conv_00 = nn.Sequential(
             nn.Conv3d(64, 32, kernel_size=(5,5,5)),
             nn.LeakyReLU(),
@@ -104,7 +101,7 @@ class UNet6DOF_medium(nn.Module):
     out = out.reshape(out.shape[0], out.shape[1], out.shape[2], out.shape[3], 1)
     out = out.repeat(1,1,1,1, self.x)
     out = self.convTrans_00(out)
-    
+
     fea1 = features[2].reshape(20, 12, 12, 256).transpose(1, 3).transpose(2, 3)
     fea1 = fea1.reshape(fea1.shape[0], fea1.shape[1], fea1.shape[2], fea1.shape[3], 1).repeat(1,1,1,1,self.k)
     out = torch.cat((out, fea1), axis=-1)
@@ -119,14 +116,13 @@ class UNet6DOF_medium(nn.Module):
     fea3 = fea3.reshape(fea3.shape[0], fea3.shape[1], fea3.shape[2], fea3.shape[3], 1).repeat(1,1,1,1,self.n)
     out = torch.cat((out, fea3), axis=-1)
 
-    print()
     out = self.conv_00(out)
     out = self.conv_01(out)
 
     return out
 
 # input = torch.rand((20,20,96,96))
-# model = UNet6DOF_medium()
+# model = UNet6DOF_large()
 # output = model(input)
 # pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 # print (pytorch_total_params)
