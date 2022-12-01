@@ -75,6 +75,11 @@ def remove_small(heatmap, threshold, device):
     heatmap = torch.where(heatmap<threshold, z, heatmap)
     return heatmap 
 
+def remove_small_2(heatmap, threshold):
+    z = torch.zeros(heatmap.shape[0], heatmap.shape[1], heatmap.shape[2], heatmap.shape[3], heatmap.shape[4])
+    heatmap = torch.where(heatmap<threshold, z, heatmap)
+    return heatmap 
+
 # Link loss
 def check_link(min, max, keypoint, device):
 
@@ -105,6 +110,36 @@ def check_link(min, max, keypoint, device):
 
     return keypoint_output #Loss cho độ dài các khớp luôn nằm trong khoảng cho phép
 
+
+# Link loss
+def check_link_2(min, max, keypoint):
+
+    # print (torch.max(max), torch.min(min))
+
+    BODY_25_pairs = np.array([
+    [1, 8], [1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7], [8, 9], [9, 10], [10, 11], [8, 12],
+    [12, 13], [13, 14], [1, 0], [14, 15], [15, 16], [14, 17], [11, 18], [18, 19], [11, 20]])
+
+    # o = torch.ones(keypoint.shape[0], keypoint.shape[1], keypoint.shape[2])
+    # keypoint = torch.where(torch.isnan(keypoint), o, keypoint)
+
+    keypoint_output = torch.ones(keypoint.shape[0],20)
+
+    for f in range(keypoint.shape[0]):
+        for i in range(20):
+
+            a = keypoint[f, BODY_25_pairs[i, 0]]
+            b = keypoint[f, BODY_25_pairs[i, 1]]
+            s = torch.sum((a - b)**2)
+
+            if s < min[i]:
+                keypoint_output[f,i] = min[i] -s
+            elif s > max[i]:
+                keypoint_output[f,i] = s - max[i]
+            else:
+                keypoint_output[f,i] = 0
+
+    return keypoint_output #Loss cho độ dài các khớp luôn nằm trong khoảng cho phép
 if not os.path.exists(args.exp_dir + 'ckpts'):
     os.makedirs(args.exp_dir + 'ckpts')
 
@@ -128,8 +163,8 @@ if args.linkLoss:
   link_max = [0.11275216, 0.02857364, 0.03353087, 0.05807897, 0.04182064, 0.0540275, 0.04558805, 0.04482517, 0.10364685, 0.08350807, 0.0324904, 0.10430953, 0.08306233, 0.03899737, 0.04866854, 0.03326589, 0.02623637, 0.04040782, 0.02288897, 0.02690871] 
   link_min = np.zeros(20,)
 
-  link_min = torch.tensor(link_min, dtype=torch.float, device=device)
-  link_max = torch.tensor(link_max, dtype=torch.float, device=device)
+  link_min = torch.tensor(link_min, dtype=torch.float, device=device) # Xóa device
+  link_max = torch.tensor(link_max, dtype=torch.float, device=device) # Xóa device
 
 # Chuẩn bị data for training và validation
 # args.exp_dir  -> /tactile_keypoint_data/
@@ -169,7 +204,7 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
-    softmax.to(device)
+    softmax.to(device) # Xóa device
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weightdecay)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=5, verbose=True)
