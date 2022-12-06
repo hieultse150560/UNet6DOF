@@ -163,8 +163,8 @@ if args.linkLoss:
   link_max = [0.11275216, 0.02857364, 0.03353087, 0.05807897, 0.04182064, 0.0540275, 0.04558805, 0.04482517, 0.10364685, 0.08350807, 0.0324904, 0.10430953, 0.08306233, 0.03899737, 0.04866854, 0.03326589, 0.02623637, 0.04040782, 0.02288897, 0.02690871] 
   link_min = np.zeros(20,)
 
-  link_min = torch.tensor(link_min, dtype=torch.float, device=device) # Xóa device
-  link_max = torch.tensor(link_max, dtype=torch.float, device=device) # Xóa device
+  link_min = torch.tensor(link_min, dtype=torch.float) #, device=device)  Xóa device
+  link_max = torch.tensor(link_max, dtype=torch.float) #, device=device)  Xóa device
 
 # Chuẩn bị data for training và validation
 # args.exp_dir  -> /tactile_keypoint_data/
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
-    softmax.to(device) # Xóa device
+    # softmax.to(device) Xóa device
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weightdecay)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=5, verbose=True)
@@ -263,14 +263,14 @@ if __name__ == '__main__':
             with torch.set_grad_enabled(True):
                 heatmap_out = model(tactile)
                 heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
-                heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
+                heatmap_transform = remove_small_2(heatmap_out.transpose(2,3), 1e-2)
                 keypoint_out, heatmap_out2 = softmax(heatmap_transform * 10) 
 
             loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000
             loss_keypoint = criterion(keypoint_out, keypoint) # For metric evaluation
 
             if args.linkLoss:
-                loss_link = torch.mean(check_link(link_min, link_max, keypoint_out, device)) * 10
+                loss_link = torch.mean(check_link_2(link_min, link_max, keypoint_out)) * 10
                 loss = loss_heatmap + loss_link
             else:
                 loss = loss_heatmap
@@ -313,14 +313,14 @@ if __name__ == '__main__':
                     with torch.set_grad_enabled(False):
                         heatmap_out = model(tactile)
                         heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
-                        heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
+                        heatmap_transform = remove_small_2(heatmap_out.transpose(2,3), 1e-2)
                         keypoint_out, heatmap_out2 = softmax(heatmap_transform * 10)
 
                     loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000
                     loss_keypoint = criterion(keypoint_out, keypoint)
 
                     if args.linkLoss:
-                        loss_link = torch.mean(check_link(link_min, link_max, keypoint_out, device)) * 10
+                        loss_link = torch.mean(check_link_2(link_min, link_max, keypoint_out)) * 10
                         loss = loss_heatmap + loss_link
                     else:
                         loss = loss_heatmap
@@ -415,7 +415,7 @@ if __name__ == '__main__':
         with torch.set_grad_enabled(False):
             heatmap_out = model(tactile)
             heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18) # Output shape từ model
-            heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
+            heatmap_transform = remove_small_2(heatmap_out.transpose(2,3), 1e-2)
             keypoint_out, heatmap_out2 = softmax(heatmap_transform) 
 
         loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000 # Loss heatmap
