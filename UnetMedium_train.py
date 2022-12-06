@@ -42,7 +42,6 @@ parser.add_argument('--exp_L2', type=bool, default=True, help='Set true if expor
 parser.add_argument('--train_continue', type=bool, default=False, help='Set true if eval time')
 args = parser.parse_args()
 
-
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -72,11 +71,6 @@ def get_keypoint_spatial_dis(keypoint_GT, keypoint_pred):
 # Loại bỏ small value
 def remove_small(heatmap, threshold, device):
     z = torch.zeros(heatmap.shape[0], heatmap.shape[1], heatmap.shape[2], heatmap.shape[3], heatmap.shape[4]).to(device)
-    heatmap = torch.where(heatmap<threshold, z, heatmap)
-    return heatmap 
-
-def remove_small_2(heatmap, threshold):
-    z = torch.zeros(heatmap.shape[0], heatmap.shape[1], heatmap.shape[2], heatmap.shape[3], heatmap.shape[4])
     heatmap = torch.where(heatmap<threshold, z, heatmap)
     return heatmap 
 
@@ -110,36 +104,6 @@ def check_link(min, max, keypoint, device):
 
     return keypoint_output #Loss cho độ dài các khớp luôn nằm trong khoảng cho phép
 
-
-# Link loss
-def check_link_2(min, max, keypoint):
-
-    # print (torch.max(max), torch.min(min))
-
-    BODY_25_pairs = np.array([
-    [1, 8], [1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7], [8, 9], [9, 10], [10, 11], [8, 12],
-    [12, 13], [13, 14], [1, 0], [14, 15], [15, 16], [14, 17], [11, 18], [18, 19], [11, 20]])
-
-    # o = torch.ones(keypoint.shape[0], keypoint.shape[1], keypoint.shape[2])
-    # keypoint = torch.where(torch.isnan(keypoint), o, keypoint)
-
-    keypoint_output = torch.ones(keypoint.shape[0],20)
-
-    for f in range(keypoint.shape[0]):
-        for i in range(20):
-
-            a = keypoint[f, BODY_25_pairs[i, 0]]
-            b = keypoint[f, BODY_25_pairs[i, 1]]
-            s = torch.sum((a - b)**2)
-
-            if s < min[i]:
-                keypoint_output[f,i] = min[i] -s
-            elif s > max[i]:
-                keypoint_output[f,i] = s - max[i]
-            else:
-                keypoint_output[f,i] = 0
-
-    return keypoint_output #Loss cho độ dài các khớp luôn nằm trong khoảng cho phép
 if not os.path.exists(args.exp_dir + 'ckpts'):
     os.makedirs(args.exp_dir + 'ckpts')
 
@@ -157,14 +121,14 @@ if not os.path.exists(args.exp_dir + 'predictions'):
 # use_gpu = torch.cuda.is_available()
 # device = 'cuda:0' if use_gpu else 'cpu'
 use_gpu = True
-device = 'cuda:0'
+device = 'cuda:0
 
 if args.linkLoss:
   link_max = [0.11275216, 0.02857364, 0.03353087, 0.05807897, 0.04182064, 0.0540275, 0.04558805, 0.04482517, 0.10364685, 0.08350807, 0.0324904, 0.10430953, 0.08306233, 0.03899737, 0.04866854, 0.03326589, 0.02623637, 0.04040782, 0.02288897, 0.02690871] 
   link_min = np.zeros(20,)
 
-  link_min = torch.tensor(link_min, dtype=torch.float) #, device=device)  Xóa device
-  link_max = torch.tensor(link_max, dtype=torch.float) #, device=device)  Xóa device
+  link_min = torch.tensor(link_min, dtype=torch.float, device=device)
+  link_max = torch.tensor(link_max, dtype=torch.float, device=device)
 
 # Chuẩn bị data for training và validation
 # args.exp_dir  -> /tactile_keypoint_data/
@@ -198,14 +162,11 @@ print (f"Name of experiment: {args.exp}, Window size: {args.window}, Subsample: 
 if __name__ == '__main__':
     np.random.seed(0)
     torch.manual_seed(0)
-    model = UNet6DOF_medium() # model
+    model = UNet6DOF_medium()
     softmax = SpatialSoftmax3D(20, 20, 18, 21) # trả về heatmap và ước tính keypoint từ heatmap predicted
-    # input_var can be on any device, including CPU
-    if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = nn.DataParallel(model)
-    # softmax.to(device) Xóa device
+
     model.to(device)
+    softmax.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weightdecay)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=5, verbose=True)
@@ -264,14 +225,14 @@ if __name__ == '__main__':
             with torch.set_grad_enabled(True):
                 heatmap_out = model(tactile)
                 heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
-                heatmap_transform = remove_small_2(heatmap_out.transpose(2,3), 1e-2)
+                heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
                 keypoint_out, heatmap_out2 = softmax(heatmap_transform * 10) 
 
             loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000
             loss_keypoint = criterion(keypoint_out, keypoint) # For metric evaluation
 
             if args.linkLoss:
-                loss_link = torch.mean(check_link_2(link_min, link_max, keypoint_out)) * 10
+                loss_link = torch.mean(check_link(link_min, link_max, keypoint_out, device)) * 10
                 loss = loss_heatmap + loss_link
             else:
                 loss = loss_heatmap
@@ -314,14 +275,14 @@ if __name__ == '__main__':
                     with torch.set_grad_enabled(False):
                         heatmap_out = model(tactile)
                         heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
-                        heatmap_transform = remove_small_2(heatmap_out.transpose(2,3), 1e-2)
+                        heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
                         keypoint_out, heatmap_out2 = softmax(heatmap_transform * 10)
 
                     loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000
                     loss_keypoint = criterion(keypoint_out, keypoint)
 
                     if args.linkLoss:
-                        loss_link = torch.mean(check_link_2(link_min, link_max, keypoint_out)) * 10
+                        loss_link = torch.mean(check_link(link_min, link_max, keypoint_out, device)) * 10
                         loss = loss_heatmap + loss_link
                     else:
                         loss = loss_heatmap
@@ -347,7 +308,6 @@ if __name__ == '__main__':
 
 
                 scheduler.step(np.mean(val_loss))
-        
             avg_train_loss = np.mean(train_loss)
             avg_val_loss = np.mean(val_loss)
             torch.save({
@@ -380,11 +340,11 @@ if __name__ == '__main__':
             val_loss_list = np.append(val_loss_list,avg_val_loss, axis = 0)
 
             to_save = [train_loss_list[1:],val_loss_list[1:]]
-            pickle.dump(to_save, open(args.exp_dir + 'log/' + args.exp +
+            pickle.dump(to_save, open( args.exp_dir + 'log/' + args.exp +
                                        '_' + str(args.lr) + '_' + str(args.window) + '.p', "wb" ))
             print("Save losses at: "+ args.exp_dir + 'log/' + args.exp + '_' + str(args.lr) + '_' + str(args.window) + '.p')
 
-        print("Epoch train Loss: %.6f, Epoch valid Loss: %.6f" % (avg_train_loss, avg_val_loss))
+        print("Train Loss: %.6f, Valid Loss: %.6f" % (avg_train_loss, avg_val_loss))
         
     model.eval()
     avg_val_loss = []
@@ -416,14 +376,14 @@ if __name__ == '__main__':
         with torch.set_grad_enabled(False):
             heatmap_out = model(tactile)
             heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18) # Output shape từ model
-            heatmap_transform = remove_small_2(heatmap_out.transpose(2,3), 1e-2)
+            heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
             keypoint_out, heatmap_out2 = softmax(heatmap_transform) 
 
         loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000 # Loss heatmap
         heatmap_out = heatmap_transform
 
-        if i_batch % 1000 == 0 and i_batch != 0:
-            print (i_batch, " Batch, Loss: ", loss_heatmap)
+        if i_batch % 100 == 0 and i_batch != 0:
+            print (i_batch, loss_heatmap)
             # loss = loss_heatmap
             # print (loss)
 
