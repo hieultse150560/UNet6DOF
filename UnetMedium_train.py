@@ -205,6 +205,7 @@ if __name__ == '__main__':
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
     # softmax.to(device) Xóa device
+    model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weightdecay)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=5, verbose=True)
