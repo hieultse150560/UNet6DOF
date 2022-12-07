@@ -245,4 +245,146 @@ class PyramidVisionTransformer(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
-  
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+
+    @torch.jit.ignore
+    def no_weight_decay(self):
+        # return {'pos_embed', 'cls_token'} # has pos_embed may be better
+        return {'cls_token'}
+
+    def get_classifier(self):
+        return self.head
+
+    def reset_classifier(self, num_classes, global_pool=''):
+        self.num_classes = num_classes
+        self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+
+    # def _get_pos_embed(self, pos_embed, patch_embed, H, W):
+    #     if H * W == self.patch_embed1.num_patches:
+    #         return pos_embed
+    #     else:
+    #         return F.interpolate(
+    #             pos_embed.reshape(1, patch_embed.H, patch_embed.W, -1).permute(0, 3, 1, 2),
+    #             size=(H, W), mode="bilinear").reshape(1, -1, H * W).permute(0, 2, 1)
+
+    def forward_features(self, x):
+        features = []
+        B = x.shape[0]
+        # B = (B,224,224,3)
+        # stage 1
+        x, (H, W) = self.patch_embed1(x) # x.shape = (B, 3136, 64)
+        features.append(x)
+        x = x + self.pos_embed1
+        x = self.pos_drop1(x)
+        for blk in self.block1:
+            x = blk(x, H, W) # Sau khi đi qua 1 block, B, N, C không thay đổi 
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous() # (B,N,C) >>> (B,H,W,C) >>> (B, C, H, W) = (B, 64, 56, 56)
+        # This is where the concept of contiguous comes in. In the example above, x is contiguous but y is not because its memory layout is different to that of a tensor of same shape made from scratch. Note that the word "contiguous" is a bit misleading because it's not that the content of the tensor is spread out around disconnected blocks of memory. Here bytes are still allocated in one block of memory but the order of the elements is different!
+        # When you call contiguous(), it actually makes a copy of the tensor such that the order of its elements in memory is the same as if it had been created from scratch with the same data.
+
+        # stage 2
+        x, (H, W) = self.patch_embed2(x) # x.shape = (B, 28*28, 128)
+        features.append(x)
+        x = x + self.pos_embed2
+        x = self.pos_drop2(x)
+        for blk in self.block2:
+            x = blk(x, H, W)
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+        # stage 3
+        x, (H, W) = self.patch_embed3(x) # x.shape = (B, 14 * 14, 256)
+        features.append(x)
+        x = x + self.pos_embed3
+        x = self.pos_drop3(x)
+        for blk in self.block3:
+            x = blk(x, H, W)
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+        # stage 4
+        x, (H, W) = self.patch_embed4(x) # x.shape = (B, 7 * 7, 512)
+        # cls_tokens = self.cls_token.expand(B, -1, -1) # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[3]))
+        # x = torch.cat((cls_tokens, x), dim=1) # Concat one dimension in number of patches dim
+        x = x + self.pos_embed4
+        x = self.pos_drop4(x)
+        for blk in self.block4:
+            x = blk(x, H, W)
+
+        x = self.norm(x)
+
+        return x, features
+
+    def forward(self, x):
+        x = self.forward_features(x)
+        x = self.head(x)
+
+        return x
+
+
+def _conv_filter(state_dict, patch_size=16):
+    """ convert patch embedding weight from manual patchify + linear proj to conv"""
+    out_dict = {}
+    for k, v in state_dict.items():
+        if 'patch_embed.proj.weight' in k:
+            v = v.reshape((v.shape[0], 3, patch_size, patch_size))
+        out_dict[k] = v
+
+    return out_dict
+
+
+@register_model
+def pvt_tiny(pretrained=False, **kwargs):
+    model = PyramidVisionTransformer(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
+        **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
+
+
+@register_model
+def pvt_small(pretrained=False, **kwargs):
+    model = PyramidVisionTransformer(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
+
+
+@register_model
+def pvt_medium(pretrained=False, **kwargs):
+    model = PyramidVisionTransformer(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 18, 3], sr_ratios=[8, 4, 2, 1],
+        **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
+
+
+@register_model
+def pvt_large(pretrained=False, **kwargs):
+    model = PyramidVisionTransformer(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
+        **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
+
+
+@register_model
+def pvt_huge_v2(pretrained=False, **kwargs):
+    model = PyramidVisionTransformer(
+        patch_size=4, embed_dims=[128, 256, 512, 768], num_heads=[2, 4, 8, 12], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 10, 60, 3], sr_ratios=[8, 4, 2, 1],
+        # drop_rate=0.0, drop_path_rate=0.02)
+        **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
