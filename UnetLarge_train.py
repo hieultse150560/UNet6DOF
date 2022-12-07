@@ -245,20 +245,20 @@ if __name__ == '__main__':
 
             if i_batch % 500 ==0 and i_batch!=0: # Cứ 50 batch lại evaluate 1 lần
 
-#                 print("[%d/%d] LR: %.6f, Loss: %.6f, Heatmap_loss: %.6f, Keypoint_loss: %.6f, "
-#                       "k_max_gt: %.6f, k_max_pred: %.6f, k_min_gt: %.6f, k_min_pred: %.6f, "
-#                       "h_max_gt: %.6f, h_max_pred: %.6f, h_min_gt: %.6f, h_min_pred: %.6f" % (
-#                     i_batch, len(train_dataloader), get_lr(optimizer), loss.item(), loss_heatmap, loss_keypoint,
-#                     np.amax(keypoint.cpu().data.numpy()), np.amax(keypoint_out.cpu().data.numpy()),
-#                     np.amin(keypoint.cpu().data.numpy()), np.amin(keypoint_out.cpu().data.numpy()),
-#                     np.amax(heatmap.cpu().data.numpy()), np.amax(heatmap_out.cpu().data.numpy()),
-#                     np.amin(heatmap.cpu().data.numpy()), np.amin(heatmap_out.cpu().data.numpy())))
+                print("[%d/%d] LR: %.6f, Loss: %.6f, Heatmap_loss: %.6f, Keypoint_loss: %.6f, "
+                      "k_max_gt: %.6f, k_max_pred: %.6f, k_min_gt: %.6f, k_min_pred: %.6f, "
+                      "h_max_gt: %.6f, h_max_pred: %.6f, h_min_gt: %.6f, h_min_pred: %.6f" % (
+                    i_batch, len(train_dataloader), get_lr(optimizer), loss.item(), loss_heatmap, loss_keypoint,
+                    np.amax(keypoint.cpu().data.numpy()), np.amax(keypoint_out.cpu().data.numpy()),
+                    np.amin(keypoint.cpu().data.numpy()), np.amin(keypoint_out.cpu().data.numpy()),
+                    np.amax(heatmap.cpu().data.numpy()), np.amax(heatmap_out.cpu().data.numpy()),
+                    np.amin(heatmap.cpu().data.numpy()), np.amin(heatmap_out.cpu().data.numpy())))
 
 
-#                 if args.linkLoss:
-#                     print ("loss_heatmap:", loss_heatmap.cpu().data.numpy(),
-#                            "loss_link:", loss_link.cpu().data.numpy(),
-#                            "loss_keypoint:", loss_keypoint.cpu().data.numpy())
+                if args.linkLoss:
+                    print ("loss_heatmap:", loss_heatmap.cpu().data.numpy(),
+                           "loss_link:", loss_link.cpu().data.numpy(),
+                           "loss_keypoint:", loss_keypoint.cpu().data.numpy())
 
                 print("Now running on val set")
                 model.train(False)
