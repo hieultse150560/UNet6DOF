@@ -99,13 +99,13 @@ class UNet6DOF_medium(nn.Module):
     
   def forward(self, input):
     out, features = self.pvtMedium.forward_features(input)
-    out = out.reshape(20, 6, 6, 512)
+    out = out.reshape(-1, 6, 6, 512)
     out = out.transpose(1, 3).transpose(2, 3)
     out = out.reshape(out.shape[0], out.shape[1], out.shape[2], out.shape[3], 1)
     out = out.repeat(1,1,1,1, self.x)
     out = self.convTrans_00(out)
     
-    fea1 = features[2].reshape(20, 12, 12, 256).transpose(1, 3).transpose(2, 3)
+    fea1 = features[2].reshape(-1, 12, 12, 256).transpose(1, 3).transpose(2, 3)
     fea1 = fea1.reshape(fea1.shape[0], fea1.shape[1], fea1.shape[2], fea1.shape[3], 1).repeat(1,1,1,1,self.k)
     out = torch.cat((out, fea1), axis=-1)
     out = self.convTrans_01(out)
