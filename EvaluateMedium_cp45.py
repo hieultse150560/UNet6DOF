@@ -7,7 +7,7 @@ import numpy as np
 import io, os
 import argparse
 from torch.utils.data import Dataset, DataLoader
-from threeD_model_final import SpatialSoftmax3D, tile2openpose_conv3d
+from UnetMedium import SpatialSoftmax3D, UNet6DOF_medium
 from threeD_dataLoader import sample_data_diffTask
 from threeD_dataLoader import sample_data_diffTask_2
 import pickle
