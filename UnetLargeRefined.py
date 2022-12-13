@@ -66,7 +66,7 @@ def pvt_large6DOF(pretrained=False, **kwargs):
 
     return model
 
-class UNet6DOF_large(nn.Module):
+class UNet6DOFLarge_refined(nn.Module):
   def __init__(self):
     self.x = 2
     self.k = 4
