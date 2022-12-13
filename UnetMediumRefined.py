@@ -65,7 +65,7 @@ def pvt_medium6DOF(pretrained=False, **kwargs):
 
     return model
 
-class UNet6DOF_medium(nn.Module):
+class UNet6DOFmedium_refined(nn.Module):
   def __init__(self):
     self.x = 2
     self.k = 4
