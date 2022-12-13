@@ -134,9 +134,8 @@ for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
     heatmap_out = heatmap_transform
 
     if i_batch % 100 == 0 and i_batch != 0:
-        print (i_batch, loss_heatmap)
-        # loss = loss_heatmap
-        # print (loss)
+        loss = loss_heatmap
+        print(i_batch, loss)
 
         '''export image'''
         # Nếu có in ra hình ảnh kết quả để kiểm nghiệm
@@ -185,7 +184,7 @@ for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
             keypoint_GT = np.empty((1,21,3))
             keypoint_pred = np.empty((1,21,3))
 
-    avg_val_loss.append(loss.data.item())
+    avg_val_loss.append(loss.data)
 print ("Loss:", np.mean(avg_val_loss))
 
 # Nếu có lưu lại kết quả distance giữa các keypoint để kiểm nghiệm (sau khi đã xếp chồng)
