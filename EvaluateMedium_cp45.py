@@ -67,7 +67,7 @@ device = 'cuda:2'
 
 np.random.seed(0)
 torch.manual_seed(0)
-model = tile2openpose_conv3d(args.window) # model
+model = UNet6DOF_medium() # model
 softmax = SpatialSoftmax3D(20, 20, 18, 21) # trả về heatmap và ước tính keypoint từ heatmap predicted
 
 model.to(device)
