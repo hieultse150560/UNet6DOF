@@ -125,7 +125,7 @@ for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
 
 
     with torch.set_grad_enabled(False):
-        heatmap_out = model(tactile, device)
+        heatmap_out = model(tactile)
         heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18) # Output shape từ model
         heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
         keypoint_out, heatmap_out2 = softmax(heatmap_transform) 
