@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-with open('./predictions/L2/singlePeople_UnetMedium_30_11_best_dis_cp50.p', 'rb') as f:
+with open('./predictions/L2/singlePeople_UnetMedium_30_11_dis_cp50.p', 'rb') as f:
   dis = pickle.load(f)
   print("Medium: ")
   print(type(dis), dis.shape)
@@ -18,7 +18,7 @@ with open('./predictions/L2/singlePeople_UnetMedium_30_11_best_dis_cp50.p', 'rb'
   
   print()
 
-with open('./predictions/L2/singlePeople_UnetLarge_30_11_best_dis_cp50.p', 'rb') as f:
+with open('./predictions/L2/singlePeople_UnetLarge_30_11_dis_cp50.p', 'rb') as f:
   dis = pickle.load(f)
   print("Large: ")
   print(type(dis), dis.shape)
