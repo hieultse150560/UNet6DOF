@@ -184,8 +184,8 @@ for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
             keypoint_GT = np.empty((1,21,3))
             keypoint_pred = np.empty((1,21,3))
 
-    avg_val_loss.append(loss.cpu().data.numpy())
-print ("Loss:", np.mean(avg_val_loss))
+    avg_val_loss.append(loss.data)
+# print ("Loss:", np.mean(avg_val_loss))
 
 # Nếu có lưu lại kết quả distance giữa các keypoint để kiểm nghiệm (sau khi đã xếp chồng)
 if args.exp_L2:
