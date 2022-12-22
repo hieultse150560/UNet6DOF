@@ -69,8 +69,8 @@ def get_keypoint_spatial_dis(keypoint_GT, keypoint_pred):
     return dis 
 
 # Loại bỏ small value
-def remove_small(heatmap, threshold, device):
-    z = torch.zeros(heatmap.shape[0], heatmap.shape[1], heatmap.shape[2], heatmap.shape[3], heatmap.shape[4]).to(device)
+def remove_small(heatmap, threshold, rank):
+    z = torch.zeros(heatmap.shape[0], heatmap.shape[1], heatmap.shape[2], heatmap.shape[3], heatmap.shape[4]).cuda(rank)
     heatmap = torch.where(heatmap<threshold, z, heatmap)
     return heatmap 
 
@@ -120,8 +120,9 @@ if not os.path.exists(args.exp_dir + 'predictions'):
 
 # use_gpu = torch.cuda.is_available()
 # device = 'cuda:0' if use_gpu else 'cpu'
-use_gpu = True
-device = 'cuda:1'
+# use_gpu = True
+# device = 'cuda:1'
+num_gpus = torch.cuda.device_count()
 
 if args.linkLoss:
   link_max = [0.11275216, 0.02857364, 0.03353087, 0.05807897, 0.04182064, 0.0540275, 0.04558805, 0.04482517, 0.10364685, 0.08350807, 0.0324904, 0.10430953, 0.08306233, 0.03899737, 0.04866854, 0.03326589, 0.02623637, 0.04040782, 0.02288897, 0.02690871] 
@@ -137,42 +138,44 @@ if not args.eval:
     data_path = "/LOCAL2/anguyen/faic/lthieu/6DOFTactile/train/batch_data/"
     mask = []
     train_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "train")
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True, num_workers=8)
+    train_sample = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=train_sample)
+    
     print ("Training set size:", len(train_dataset))
 
     val_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "val")
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8)
+    val_sample = torch.utils.data.distributed.DistributedSampler(val_dataset)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=val_sample)
     print ("Validation set size: ", len(val_dataset))
     
     test_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "test")
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8)
+    test_sample = torch.utils.data.distributed.DistributedSampler(test_dataset)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=test_sample)
     print ("Test set size: ", len(test_dataset))
-    
-#!!!!!!!!!!!!!!!!!!!!!
-# Chuẩn bị data for testing
-# if args.eval:
-#     test_path = args.test_dir
-#     mask = []
-#     test_dataset = sample_data_diffTask(test_path, args.window, args.subsample, "test")
-#     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8)
-#     print ("Test set size: ", len(test_dataset))
 
 print (f"Name of experiment: {args.exp}, Window size: {args.window}, Subsample: {args.subsample}, Device: {device}")
 
-if __name__ == '__main__':
+def run_training_process_on_given_gpu(rank, num_gpus):
     np.random.seed(0)
     torch.manual_seed(0)
+    torch.cuda.set_device(rank)
+    torch.distributed.init_process_group(backend='nccl', rank=rank,
+                    world_size=num_gpus, init_method='env://')
+    
     model = UNet6DOFLarge_refined()
     softmax = SpatialSoftmax3D(20, 20, 18, 21) # trả về heatmap và ước tính keypoint từ heatmap predicted
 
-    model.to(device)
-    softmax.to(device)
+    model = model.cuda(rank)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
+    
+    softmax..cuda(rank)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weightdecay)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=5, verbose=True)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print (f"Total parameters: {pytorch_total_params}")
     criterion = nn.MSELoss()
+    criterion.cuda(rank)
 
     # Fine tune
     
@@ -217,15 +220,15 @@ if __name__ == '__main__':
 
         for i_batch, sample_batched in bar(enumerate(train_dataloader, 0)):
             model.train(True)
-            tactile = torch.tensor(sample_batched[0], dtype=torch.float, device=device)
-            heatmap = torch.tensor(sample_batched[1], dtype=torch.float, device=device)
-            keypoint = torch.tensor(sample_batched[2], dtype=torch.float, device=device)
-            idx = torch.tensor(sample_batched[3], dtype=torch.float, device=device)
+            tactile = torch.tensor(sample_batched[0], dtype=torch.float).cuda(rank)
+            heatmap = torch.tensor(sample_batched[1], dtype=torch.float).cuda(rank)
+            keypoint = torch.tensor(sample_batched[2], dtype=torch.float).cuda(rank)
+            idx = torch.tensor(sample_batched[3], dtype=torch.float).cuda(rank)
 
             with torch.set_grad_enabled(True):
                 heatmap_out = model(tactile)
                 heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
-                heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
+                heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, rank)
                 keypoint_out, heatmap_out2 = softmax(heatmap_transform * 10) 
 
             loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000
@@ -268,14 +271,14 @@ if __name__ == '__main__':
                 bar = ProgressBar(max_value=len(val_dataloader))
                 for i_batch, sample_batched in bar(enumerate(val_dataloader, 0)):
 
-                    tactile = torch.tensor(sample_batched[0], dtype=torch.float, device=device)
-                    heatmap = torch.tensor(sample_batched[1], dtype=torch.float, device=device)
-                    keypoint = torch.tensor(sample_batched[2], dtype=torch.float, device=device)
+                    tactile = torch.tensor(sample_batched[0], dtype=torch.float).cuda(rank)
+                    heatmap = torch.tensor(sample_batched[1], dtype=torch.float).cuda(rank)
+                    keypoint = torch.tensor(sample_batched[2], dtype=torch.float).cuda(rank)
 
                     with torch.set_grad_enabled(False):
                         heatmap_out = model(tactile)
                         heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
-                        heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
+                        heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, rank)
                         keypoint_out, heatmap_out2 = softmax(heatmap_transform * 10)
 
                     loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000
@@ -367,16 +370,16 @@ if __name__ == '__main__':
 
     c = 0
     for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
-        tactile = torch.tensor(sample_batched[0], dtype=torch.float, device=device)
-        heatmap = torch.tensor(sample_batched[1], dtype=torch.float, device=device)
-        keypoint = torch.tensor(sample_batched[2], dtype=torch.float, device=device)
-        tactile_frame = torch.tensor(sample_batched[3], dtype=torch.float, device=device)
+        tactile = torch.tensor(sample_batched[0], dtype=torch.float).cuda(rank)
+        heatmap = torch.tensor(sample_batched[1], dtype=torch.float).cuda(rank)
+        keypoint = torch.tensor(sample_batched[2], dtype=torch.float).cuda(rank)
+        tactile_frame = torch.tensor(sample_batched[3], dtype=torch.float).cuda(rank)
 
 
         with torch.set_grad_enabled(False):
             heatmap_out = model(tactile)
             heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18) # Output shape từ model
-            heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, device)
+            heatmap_transform = remove_small(heatmap_out.transpose(2,3), 1e-2, rank)
             keypoint_out, heatmap_out2 = softmax(heatmap_transform) 
 
         loss_heatmap = torch.mean((heatmap_transform - heatmap)**2 * (heatmap + 0.5) * 2) * 1000 # Loss heatmap
@@ -455,3 +458,11 @@ if __name__ == '__main__':
         generateVideo(to_save,
                   args.exp_dir + 'predictions/video/' + args.ckpt,
                   heatmap=True)
+    
+if __name__ == '__main__':
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    num_gpus = torch.cuda.device_count()
+    print('num_gpus: ', num_gpus)
+    torch.multiprocessing.spawn(run_training_process_on_given_gpu, args=(num_gpus, ), nprocs=num_gpus, join=True)
+
