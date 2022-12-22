@@ -30,7 +30,7 @@ parser.add_argument('--weightdecay', type=float, default=1e-3, help='weight deca
 parser.add_argument('--window', type=int, default=10, help='window around the time step')
 parser.add_argument('--subsample', type=int, default=1, help='subsample tile res')
 parser.add_argument('--linkLoss', type=bool, default=True, help='use link loss') # Find min and max link
-parser.add_argument('--epoch', type=int, default=300, help='The time steps you want to subsample the dataset to,500')
+parser.add_argument('--epoch', type=int, default=1, help='The time steps you want to subsample the dataset to,500')
 parser.add_argument('--numwork', type=int, default=16, help='The number of workers')
 parser.add_argument('--ckpt', type=str, default ='singlePerson_0.0001_10_best', help='loaded ckpt file') # Enter link of trained model
 parser.add_argument('--eval', type=bool, default=False, help='Set true if eval time') # Evaluation with test data. 2 Mode: Loading trained model and evaluate with test set, Training and Evaluation with evaluation set. 
