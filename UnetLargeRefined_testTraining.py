@@ -209,7 +209,7 @@ if __name__ == '__main__':
 
     for epoch in range(args.epoch):
         print(f">>>Epoch {epoch}<<<") 
-
+        startTime = time.time()
         train_loss = []
         val_loss = []
         print ('Begin training')
@@ -354,6 +354,8 @@ if __name__ == '__main__':
         print("Save losses at: "+ args.exp_dir + 'log/' + args.exp + '_' + str(args.lr) + '_' + str(args.window) + '.p')
 
         print("Train Loss: %.6f, Valid Loss: %.6f" % (avg_train_loss, avg_val_loss))
+        endTime = time.time()
+        print("Time of an epoch: ", (endTime - startTime))
         
     model.eval()
     avg_val_loss = []
