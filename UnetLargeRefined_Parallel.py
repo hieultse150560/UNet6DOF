@@ -168,7 +168,7 @@ def run_training_process_on_given_gpu(rank, num_gpus):
     model = model.cuda(rank)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
     
-    softmax..cuda(rank)
+    softmax.cuda(rank)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weightdecay)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=5, verbose=True)
