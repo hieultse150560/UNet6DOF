@@ -158,18 +158,18 @@ def run_training_process_on_given_gpu(rank, num_gpus):
     mask = []
     train_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "train")
     train_sample = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=train_sample)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size,shuffle=False, num_workers=4*num_gpus, pin_memory=True, sampler=train_sample)
     
     print ("Training set size:", len(train_dataset))
 
     val_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "val")
     val_sample = torch.utils.data.distributed.DistributedSampler(val_dataset)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=val_sample)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size,shuffle=False, num_workers=4*num_gpus, pin_memory=True, sampler=val_sample)
     print ("Validation set size: ", len(val_dataset))
     
     test_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "test")
     test_sample = torch.utils.data.distributed.DistributedSampler(test_dataset)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=test_sample)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size,shuffle=False, num_workers=4*num_gpus, pin_memory=True, sampler=test_sample)
     print ("Test set size: ", len(test_dataset))
     
     if args.linkLoss:
