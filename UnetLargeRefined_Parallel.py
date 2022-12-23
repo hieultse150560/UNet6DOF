@@ -128,28 +128,11 @@ num_gpus = torch.cuda.device_count()
 # Chuẩn bị data for training và validation
 # args.exp_dir  -> /tactile_keypoint_data/
 #               -> /singlePerson_test/
-if not args.eval:
-    data_path = "/LOCAL2/anguyen/faic/lthieu/6DOFTactile/train/batch_data/"
-    mask = []
-    train_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "train")
-    train_sample = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=train_sample)
-    
-    print ("Training set size:", len(train_dataset))
-
-    val_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "val")
-    val_sample = torch.utils.data.distributed.DistributedSampler(val_dataset)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=val_sample)
-    print ("Validation set size: ", len(val_dataset))
-    
-    test_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "test")
-    test_sample = torch.utils.data.distributed.DistributedSampler(test_dataset)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=test_sample)
-    print ("Test set size: ", len(test_dataset))
 
 print (f"Name of experiment: {args.exp}, Window size: {args.window}, Subsample: {args.subsample}")
 
 def run_training_process_on_given_gpu(rank, num_gpus):
+    
     np.random.seed(0)
     torch.manual_seed(0)
     torch.cuda.set_device(rank)
@@ -170,6 +153,24 @@ def run_training_process_on_given_gpu(rank, num_gpus):
     print (f"Total parameters: {pytorch_total_params}")
     criterion = nn.MSELoss()
     criterion.cuda(rank)
+    
+    data_path = "/LOCAL2/anguyen/faic/lthieu/6DOFTactile/train/batch_data/"
+    mask = []
+    train_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "train")
+    train_sample = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=train_sample)
+    
+    print ("Training set size:", len(train_dataset))
+
+    val_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "val")
+    val_sample = torch.utils.data.distributed.DistributedSampler(val_dataset)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=val_sample)
+    print ("Validation set size: ", len(val_dataset))
+    
+    test_dataset = sample_data_diffTask_2(data_path, args.window, args.subsample, "test")
+    test_sample = torch.utils.data.distributed.DistributedSampler(test_dataset)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size,shuffle=True, num_workers=4*num_gpus, pin_memory=True, sampler=test_sample)
+    print ("Test set size: ", len(test_dataset))
     
     if args.linkLoss:
         link_max = [0.11275216, 0.02857364, 0.03353087, 0.05807897, 0.04182064, 0.0540275, 0.04558805, 0.04482517, 0.10364685, 0.08350807, 0.0324904, 0.10430953, 0.08306233, 0.03899737, 0.04866854, 0.03326589, 0.02623637, 0.04040782, 0.02288897, 0.02690871] 
