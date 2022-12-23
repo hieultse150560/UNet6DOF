@@ -211,7 +211,7 @@ def run_training_process_on_given_gpu(rank, num_gpus):
 
     for epoch in range(args.epoch):
         print(f">>>Epoch {epoch}<<<") 
-
+        startTime = time.time()
         train_loss = []
         val_loss = []
         print ('Begin training')
@@ -219,12 +219,15 @@ def run_training_process_on_given_gpu(rank, num_gpus):
         bar = ProgressBar(max_value=len(train_dataloader))
 
         for i_batch, sample_batched in bar(enumerate(train_dataloader, 0)):
+            start = time.time()
             model.train(True)
             tactile = torch.tensor(sample_batched[0], dtype=torch.float).cuda(rank)
             heatmap = torch.tensor(sample_batched[1], dtype=torch.float).cuda(rank)
             keypoint = torch.tensor(sample_batched[2], dtype=torch.float).cuda(rank)
             idx = torch.tensor(sample_batched[3], dtype=torch.float).cuda(rank)
-
+            stop = time.time()
+            print(f"Loading data: {stop - start}s")
+            start = time.time()
             with torch.set_grad_enabled(True):
                 heatmap_out = model(tactile)
                 heatmap_out = heatmap_out.reshape(-1, 21, 20, 20, 18)
@@ -239,13 +242,16 @@ def run_training_process_on_given_gpu(rank, num_gpus):
                 loss = loss_heatmap + loss_link
             else:
                 loss = loss_heatmap
-
+            stop = time.time()
+            print(f"Feed Forward: {stop - start}s")
+            start = time.time()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             train_loss.append(loss.data.item())
-
+            stop = time.time()
+            print(f"Back Propagation: {stop - start}s")
             if i_batch % 1000 ==0 and i_batch!=0: # Cứ 50 batch lại evaluate 1 lần
 
                 print("[%d/%d] LR: %.6f, Loss: %.6f, Heatmap_loss: %.6f, Keypoint_loss: %.6f, "
@@ -348,6 +354,8 @@ def run_training_process_on_given_gpu(rank, num_gpus):
         print("Save losses at: "+ args.exp_dir + 'log/' + args.exp + '_' + str(args.lr) + '_' + str(args.window) + '.p')
 
         print("Train Loss: %.6f, Valid Loss: %.6f" % (avg_train_loss, avg_val_loss))
+        endTime = time.time()
+        print("Time of an epoch: ", (endTime - startTime))
         
     model.eval()
     avg_val_loss = []
