@@ -143,7 +143,7 @@ def run_training_process_on_given_gpu(rank, num_gpus):
     softmax = SpatialSoftmax3D(20, 20, 18, 21) # trả về heatmap và ước tính keypoint từ heatmap predicted
 
     model = model.cuda(rank)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank])
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[rank], find_unused_parameters=True)
     
     softmax.cuda(rank)
 
