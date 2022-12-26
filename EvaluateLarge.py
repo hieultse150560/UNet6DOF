@@ -85,13 +85,13 @@ test_dataset = sample_data_diffTask_2(train_path, args.window, args.subsample, "
 test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8)
 print ("Test set size: ", len(test_dataset))
     
-checkpoint = torch.load(args.exp_dir + 'ckpts/' + 'singlePeople_UnetLarge_30_11_0.0001_10_cp82.path.tar')
+checkpoint = torch.load(args.exp_dir + 'ckpts/' + 'singlePeople_UnetLarge_30_11_0.0001_10_cp99.path.tar')
 model.load_state_dict(checkpoint['model_state_dict'])
 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 epochs = checkpoint['epoch']
 loss = checkpoint['loss']
 print("Loaded loss:", loss)
-print("ckpt loaded:", args.exp_dir + 'ckpts/' + 'singlePeople_UnetLarge_30_11_0.0001_10_cp82.path.tar')
+print("ckpt loaded:", args.exp_dir + 'ckpts/' + 'singlePeople_UnetLarge_30_11_0.0001_10_cp99.path.tar')
 print("Now running on test set")
 
 
@@ -145,7 +145,7 @@ for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
                              keypoint_out.cpu().data.numpy().reshape(-1,21,3),
                              tactile_frame.cpu().data.numpy().reshape(-1,96,96)]
 
-            generateImage(imageData, args.exp_dir + 'predictions/image/', i_batch//1000, 0)
+            generateImage(imageData, args.exp_dir + 'predictions/image/', args.exp + "_cp99_", i_batch//1000, 0)
 
     '''log data for L2 distance and video'''
     # Lưu lại chồng các frame để in ra video
@@ -188,7 +188,7 @@ for i_batch, sample_batched in bar(enumerate(test_dataloader, 0)):
 # Nếu có lưu lại kết quả distance giữa các keypoint để kiểm nghiệm (sau khi đã xếp chồng)
 if args.exp_L2:
     dis = get_keypoint_spatial_dis(keypoint_GT_log[1:,:,:], keypoint_pred_log[1:,:,:])
-    pickle.dump(dis, open(args.exp_dir + 'predictions/L2/'+ args.exp + '_dis_cp82_22_12.p', "wb"))
+    pickle.dump(dis, open(args.exp_dir + 'predictions/L2/'+ args.exp + '_dis_cp99_26_12.p', "wb"))
     print ("keypoint_dis_saved:", dis, dis.shape)
 
 # Tạo video
@@ -201,5 +201,5 @@ if args.exp_video:
     print (to_save[0].shape, to_save[1].shape, to_save[2].shape, to_save[3].shape, to_save[4].shape)
 
     generateVideo(to_save,
-              args.exp_dir + 'predictions/video/' + args.exp + '_dis_cp82.p',
+              args.exp_dir + 'predictions/video/' + args.exp + '_dis_cp99.p',
               heatmap=True)
