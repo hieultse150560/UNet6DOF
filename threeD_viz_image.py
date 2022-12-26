@@ -197,7 +197,7 @@ def plot3Dheatmap(data):
 
     return img
 
-def generateImage(data, path, c, base, tile_coord=tile_pos):
+def generateImage(data, path, exp = "", c, base, tile_coord=tile_pos):
 
     heatmap_GT = data[0]
     heatmap_pred = data[1]
@@ -224,8 +224,8 @@ def generateImage(data, path, c, base, tile_coord=tile_pos):
         img1 = plot3Dheatmap(remove_samll(np.reshape(heatmap_GT[i,:,:,:,:],(21,20,20,18))))
         img2 = plot3Dheatmap(remove_samll(np.reshape(heatmap_pred[i,:,:,:,:],(21,20,20,18))))
 
-        cv2.imwrite(path + 'heatmap_gt%06d.jpg' % (base+c*32+i), img1)
-        cv2.imwrite(path + 'heatmap_pred%06d.jpg' % (base+c*32+i), img2)
+        cv2.imwrite(path + exp + 'heatmap_gt%06d.jpg' % (base+c*32+i), img1)
+        cv2.imwrite(path + exp + 'heatmap_pred%06d.jpg' % (base+c*32+i), img2)
 
 
         img3 = plotKeypoint(np.reshape(keypoint_GT[i,:,:],(21,3)), scale=19, tactile=True
@@ -239,9 +239,9 @@ def generateImage(data, path, c, base, tile_coord=tile_pos):
                                        , topVeiw=False, keypoint=True)
 
 
-        cv2.imwrite(path + '3Dtactile%06d.jpg' % (base+c*32+i), img3)
-        cv2.imwrite(path + 'gt%06d.jpg' % (base+c*32+i), img5)
-        cv2.imwrite(path + 'pred%06d.jpg' % (base+c*32+i), img6)
+        cv2.imwrite(path + exp + '3Dtactile%06d.jpg' % (base+c*32+i), img3)
+        cv2.imwrite(path + exp + 'gt%06d.jpg' % (base+c*32+i), img5)
+        cv2.imwrite(path + exp + 'pred%06d.jpg' % (base+c*32+i), img6)
 
 
         # data = [np.reshape(keypoint_GT[i,:,:],(21,3)), np.reshape(keypoint_pred[i,:,:],(21,3))]
