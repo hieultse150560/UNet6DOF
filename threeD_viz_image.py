@@ -197,7 +197,7 @@ def plot3Dheatmap(data):
 
     return img
 
-def generateImage(data, path, exp = "", c, base, tile_coord=tile_pos):
+def generateImage(data, path, exp, c, base, tile_coord=tile_pos):
 
     heatmap_GT = data[0]
     heatmap_pred = data[1]
